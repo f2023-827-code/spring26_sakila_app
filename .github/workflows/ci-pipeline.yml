@@ -1,0 +1,51 @@
+name: Sakila Application Continuous Integration Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**', 'hotfix/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  code-quality-audit:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Source Code Repository
+      uses: actions/checkout@v3
+
+    - name: Configure Python Runtime Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Populate System Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 bandit
+
+    - name: Execute Code Linting Evaluation
+      run: flake8 . || true
+
+    - name: Execute Automated Static Application Security Testing
+      run: bandit -r . -x ./test_app.py || true
+
+  integration-testing:
+    needs: code-quality-audit
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Source Code Repository
+      uses: actions/checkout@v3
+
+    - name: Configure Python Runtime Environment
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Provision Application Stack Matrix
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run Complete Automated Test Suite
+      run: python -m unittest test_app.py
